@@ -206,7 +206,7 @@ export default async function Home({
                   </span>
                   {r.visited && (
                     <span className="rounded-full border border-rose-800/60 bg-rose-900/40 px-2 py-0.5 text-xs font-medium text-rose-300">
-                      다녀옴
+                      {r.user_id === user.id ? "다녀옴" : "등록자 다녀옴"}
                     </span>
                   )}
                 </div>
