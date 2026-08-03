@@ -16,13 +16,17 @@ type Restaurant = {
   rating: number | null;
 };
 
+const BUDGET_PRESETS = [10000, 20000, 30000] as const;
+
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; category?: string }>;
+  searchParams: Promise<{ tab?: string; category?: string; maxBudget?: string }>;
 }) {
-  const { tab, category } = await searchParams;
+  const { tab, category, maxBudget } = await searchParams;
   const visited = tab !== "want";
+  const maxBudgetNum = Number(maxBudget);
+  const hasBudgetFilter = maxBudget && Number.isFinite(maxBudgetNum) && maxBudgetNum > 0;
 
   const supabase = await createClient();
   const {
@@ -41,12 +45,30 @@ export default async function Home({
     query = query.eq("category", category);
   }
 
+  if (hasBudgetFilter) {
+    query = query.lte("budget", maxBudgetNum);
+  }
+
   const { data: restaurants, error } = await query;
 
-  const tabHref = (t: "want" | "visited") =>
-    `/?tab=${t}${category ? `&category=${category}` : ""}`;
-  const categoryHref = (c?: string) =>
-    `/?tab=${visited ? "visited" : "want"}${c ? `&category=${c}` : ""}`;
+  const buildHref = (overrides: {
+    tab?: "want" | "visited";
+    category?: string;
+    maxBudget?: number;
+  }) => {
+    const params = new URLSearchParams();
+    params.set("tab", overrides.tab ?? (visited ? "visited" : "want"));
+    const nextCategory = "category" in overrides ? overrides.category : category;
+    if (nextCategory) params.set("category", nextCategory);
+    const nextMaxBudget =
+      "maxBudget" in overrides ? overrides.maxBudget : hasBudgetFilter ? maxBudgetNum : undefined;
+    if (nextMaxBudget) params.set("maxBudget", String(nextMaxBudget));
+    return `/?${params.toString()}`;
+  };
+
+  const tabHref = (t: "want" | "visited") => buildHref({ tab: t });
+  const categoryHref = (c?: string) => buildHref({ category: c });
+  const budgetHref = (b?: number) => buildHref({ maxBudget: b });
 
   return (
     <div className="flex flex-1 flex-col bg-[#161b16] px-5 py-8">
@@ -104,6 +126,32 @@ export default async function Home({
               }`}
             >
               {c}
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <Link
+            href={budgetHref()}
+            className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+              !hasBudgetFilter
+                ? "border-orange-500 bg-orange-500/20 text-orange-300"
+                : "border-white/10 text-zinc-400"
+            }`}
+          >
+            예산 전체
+          </Link>
+          {BUDGET_PRESETS.map((b) => (
+            <Link
+              key={b}
+              href={budgetHref(b)}
+              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+                maxBudgetNum === b
+                  ? "border-orange-500 bg-orange-500/20 text-orange-300"
+                  : "border-white/10 text-zinc-400"
+              }`}
+            >
+              {(b / 10000).toLocaleString("ko-KR")}만원 이하
             </Link>
           ))}
         </div>
