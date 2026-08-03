@@ -13,9 +13,10 @@ type Restaurant = {
   budget: number;
   visited: boolean;
   rating: number | null;
+  user_id: string;
 };
 
-type Recommendation = Restaurant & { reason: string };
+type Recommendation = Restaurant & { reason: string; ownerLabel: string };
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -49,11 +50,23 @@ export default async function RecommendPage({
 
     const { data: candidates } = await supabase
       .from("restaurants")
-      .select("id, name, category, address, budget, visited, rating")
-      .eq("user_id", user.id)
+      .select("id, name, category, address, budget, visited, rating, user_id")
       .lte("budget", budgetNum);
 
     const all = (candidates as Restaurant[] | null) ?? [];
+
+    const ownerIds = [...new Set(all.map((r) => r.user_id))];
+    const ownerName = new Map<string, string>();
+    if (ownerIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .in("id", ownerIds);
+      for (const p of profiles ?? []) ownerName.set(p.id, p.email.split("@")[0]);
+    }
+    const labelFor = (r: Restaurant) =>
+      r.user_id === user.id ? "내가 등록" : `등록자: ${ownerName.get(r.user_id) ?? "알 수 없음"}`;
+
     const visited = all
       .filter((r) => r.visited && r.rating != null)
       .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
@@ -61,14 +74,25 @@ export default async function RecommendPage({
 
     const picked: Recommendation[] = [];
     for (const r of visited.slice(0, 2)) {
+      const isOwner = r.user_id === user.id;
       picked.push({
         ...r,
-        reason: `이미 다녀왔고 별점 ${"★".repeat(r.rating ?? 0)}인 곳이에요`,
+        ownerLabel: labelFor(r),
+        reason: isOwner
+          ? `이미 다녀왔고 별점 ${"★".repeat(r.rating ?? 0)}인 곳이에요`
+          : `${ownerName.get(r.user_id) ?? "다른 사용자"}님이 다녀왔고 별점 ${"★".repeat(r.rating ?? 0)}인 곳이에요`,
       });
     }
     for (const r of want) {
       if (picked.length >= 3) break;
-      picked.push({ ...r, reason: "아직 안 가본 곳인데 예산에 딱 맞아요" });
+      const isOwner = r.user_id === user.id;
+      picked.push({
+        ...r,
+        ownerLabel: labelFor(r),
+        reason: isOwner
+          ? "아직 안 가본 곳인데 예산에 딱 맞아요"
+          : `${ownerName.get(r.user_id) ?? "다른 사용자"}님의 위시리스트예요, 예산에 딱 맞아요`,
+      });
     }
 
     recommendations = picked;
@@ -137,6 +161,7 @@ export default async function RecommendPage({
                 <p className="font-medium text-zinc-50">{r.name}</p>
                 <p className="text-sm text-zinc-400">{r.address}</p>
                 <p className="text-sm text-orange-400">{r.reason}</p>
+                <p className="text-xs text-zinc-500">{r.ownerLabel}</p>
               </Link>
             ))}
           </div>
