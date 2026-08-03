@@ -85,6 +85,14 @@ export default async function Home({
           </form>
         </div>
 
+        <Link
+          href="/recommend"
+          className="flex items-center justify-between rounded-2xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-sm font-medium text-orange-300 transition hover:bg-orange-500/20"
+        >
+          <span>💡 예산 입력하면 갈 곳 추천해드려요</span>
+          <span aria-hidden>→</span>
+        </Link>
+
         <div className="flex rounded-xl bg-black/30 p-1 text-sm font-medium">
           <Link
             href={tabHref("want")}
