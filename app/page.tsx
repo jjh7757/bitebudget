@@ -14,6 +14,7 @@ type Restaurant = {
   budget: number;
   visited: boolean;
   rating: number | null;
+  user_id: string;
 };
 
 const BUDGET_PRESETS = [10000, 20000, 30000] as const;
@@ -36,8 +37,7 @@ export default async function Home({
 
   let query = supabase
     .from("restaurants")
-    .select("id, name, category, address, budget, visited, rating")
-    .eq("user_id", user.id)
+    .select("id, name, category, address, budget, visited, rating, user_id")
     .eq("visited", visited)
     .order("created_at", { ascending: false });
 
@@ -50,6 +50,16 @@ export default async function Home({
   }
 
   const { data: restaurants, error } = await query;
+
+  const ownerIds = [...new Set((restaurants ?? []).map((r) => r.user_id))];
+  const ownerLabel = new Map<string, string>();
+  if (ownerIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .in("id", ownerIds);
+    for (const p of profiles ?? []) ownerLabel.set(p.id, p.email.split("@")[0]);
+  }
 
   const buildHref = (overrides: {
     tab?: "want" | "visited";
@@ -75,8 +85,10 @@ export default async function Home({
       <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-50">내 맛집</h1>
-            <p className="mt-1 text-sm text-zinc-400">예산 안에서 골라보기</p>
+            <h1 className="text-2xl font-semibold text-zinc-50">맛집 목록</h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              모두가 등록한 맛집, 예산 안에서 골라보기
+            </p>
           </div>
           <form action={signOut}>
             <button className="text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-300">
@@ -209,6 +221,11 @@ export default async function Home({
                 )}
                 <p className="text-sm text-zinc-400">
                   ₩{r.budget.toLocaleString("ko-KR")}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {r.user_id === user.id
+                    ? "내가 등록"
+                    : `등록자: ${ownerLabel.get(r.user_id) ?? "알 수 없음"}`}
                 </p>
               </Link>
             ))}
