@@ -1,6 +1,6 @@
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.5-flash";
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 15_000;
 const MAX_PICKS = 3;
 
 export type GeminiCandidate = {
@@ -71,6 +71,7 @@ export async function getGeminiRecommendations(
         contents: [{ parts: [{ text: buildPrompt(budget, candidates) }] }],
         generationConfig: {
           responseMimeType: "application/json",
+          thinkingConfig: { thinkingBudget: 0 },
           responseSchema: {
             type: "ARRAY",
             items: {
