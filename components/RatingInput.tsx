@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Star } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 export default function RatingInput({
   defaultValue,
@@ -18,11 +20,16 @@ export default function RatingInput({
           type="button"
           onClick={() => setValue(n === value ? 0 : n)}
           aria-label={`${n}점`}
-          className={`text-2xl leading-none transition ${
-            n <= value ? "text-orange-400" : "text-zinc-600"
-          }`}
+          className="transition"
         >
-          ★
+          <Star
+            className={cn(
+              "h-7 w-7",
+              n <= value
+                ? "fill-primary-500 text-primary-500"
+                : "text-muted-foreground"
+            )}
+          />
         </button>
       ))}
     </div>
